@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "611925015953",
+    "project_id": "lembretes-1a2b9",
+    "storage_bucket": "lembretes-1a2b9.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:611925015953:android:3711d4c4ff1d8dca62ee30",
+        "android_client_info": {
+          "package_name": "com.lembrancas.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqbOgN_FYERE_Suo0OFbo1B2TZwxO9BQ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

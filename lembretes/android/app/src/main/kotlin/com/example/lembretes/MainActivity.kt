@@ -1,4 +1,4 @@
-package com.example.lembretes
+package com.lembrancas.app
 
 import io.flutter.embedding.android.FlutterActivity
 
