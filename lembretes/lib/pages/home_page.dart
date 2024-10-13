@@ -1,8 +1,22 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lembretes/pages/add_lembretes_page.dart';
+import 'package:lembretes/pages/login_page.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  // Logout
+  Future<void> _signOut(BuildContext context) async {
+    await _auth.signOut();
+    if (context.mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const LoginPage()),
+      );
+    }
+  }
 
   final List<Map<String, String>> lembretes = [
     {
@@ -26,7 +40,31 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: const Text('Meus Lembretes'),
+          title: const Text('Lembretes'),
+        ),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: <Widget>[
+              const DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                ),
+                child: Text(
+                  'Menu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.exit_to_app),
+                title: const Text('Logout'),
+                onTap: () => _signOut(context),
+              ),
+            ],
+          ),
         ),
         body: ListView.builder(
           itemCount: lembretes.length,

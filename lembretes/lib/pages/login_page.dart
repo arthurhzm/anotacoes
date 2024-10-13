@@ -31,7 +31,6 @@ class _LoginPageState extends State<LoginPage> {
         }
       } on FirebaseAuthException catch (e) {
         String errorMessage = 'Ocorreu um erro, tente novamente.';
-
         // Tratamento de erros comuns
         if (e.code == 'user-not-found') {
           errorMessage = 'Usuário não encontrado. Por favor, registre-se.';
