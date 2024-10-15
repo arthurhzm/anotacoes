@@ -43,7 +43,6 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         title VARCHAR(50) NOT NULL,
-        description VARCHAR(MAX) ,
         remember INTEGER,
         remember_type VARCHAR(10), -- minutes, hours, days, weeks, months, years
 

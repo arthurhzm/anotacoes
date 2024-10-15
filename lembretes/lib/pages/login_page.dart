@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -31,7 +32,8 @@ class _LoginPageState extends State<LoginPage> {
         }
       } on FirebaseAuthException catch (e) {
         String errorMessage = 'Ocorreu um erro, tente novamente.';
-        // Tratamento de erros comuns
+
+        // Tratamento de erros comuns do FirebaseAuthException
         if (e.code == 'user-not-found') {
           errorMessage = 'Usuário não encontrado. Por favor, registre-se.';
         } else if (e.code == 'wrong-password') {
@@ -44,13 +46,39 @@ class _LoginPageState extends State<LoginPage> {
           errorMessage = 'A senha é muito fraca. Escolha uma senha mais forte.';
         }
 
-        // Exibe a mensagem de erro usando um SnackBar
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // Exibe a mensagem de erro na UI
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } on PlatformException catch (e) {
+        // Tratamento para PlatformException
+        String errorMessage = 'Erro de plataforma: ${e.message}';
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
+        // Tratamento para qualquer outra exceção
+        String errorMessage = 'Ocorreu um erro inesperado. Tente novamente.';
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
