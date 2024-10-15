@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lembretes/pages/login_page.dart';
 
@@ -81,6 +82,33 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _delete(String documentId, BuildContext context) async {
+    final User? user = _auth.currentUser;
+    if (user == null) return;
+
+    // Deletar lembrete
+    try {
+      await FirebaseFirestore.instance
+          .collection('lembretes')
+          .doc(user.uid)
+          .collection('meus_lembretes')
+          .doc(documentId)
+          .delete();
+
+      // Recarregar a lista de lembretes
+      setState(() {
+        _lembretes = fetchLembretes(user.uid); // Atualiza a lista
+      });
+    } catch (e) {
+      if (context.mounted) {
+        // Trata erros de exclusão
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir lembrete: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildLembreteForm(bool isNeverSelected) {
     return Form(
       key: _formKey,
@@ -154,7 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void novoLembreteDialog(BuildContext context) {
+  void _addLembreteDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -174,6 +202,42 @@ class _HomeScreenState extends State<HomeScreen> {
             TextButton(
               onPressed: () => _submit(context),
               child: const Text('Adicionar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _viewLembrete(lembretes, index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(lembretes[index]['title'] ?? ''),
+          content: Column(
+            mainAxisSize: MainAxisSize.min, // Ajusta o tamanho da coluna
+            children: [
+              Text(lembretes[index]['description'] ?? ''),
+              Text(
+                lembretes[index]['remember'] != null
+                    ? 'Lembrar a cada: ${lembretes[index]['remember']} ${lembretes[index]['remember_type']}'
+                    : '',
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(
+                  backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: () => _delete(lembretes[index]['id'], context),
+              child: const Text('Excluir'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Fechar'),
             ),
           ],
         );
@@ -243,33 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   margin: const EdgeInsets.all(8),
                   child: ListTile(
                     title: Text(lembretes[index]['title'] ?? ''),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text(lembretes[index]['title'] ?? ''),
-                            content: Column(
-                              mainAxisSize: MainAxisSize
-                                  .min, // Ajusta o tamanho da coluna
-                              children: [
-                                Text(lembretes[index]['description'] ?? ''),
-                                Text(
-                                    'Lembrar a cada: ${lembretes[index]['remember'] ?? ''} ${lembretes[index]['remember_type'] ?? ''}'),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                },
-                                child: const Text('Fechar'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
+                    onTap: () => _viewLembrete(lembretes, index),
                   ),
                 );
               },
@@ -277,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => novoLembreteDialog(context),
+          onPressed: () => _addLembreteDialog(context),
           child: const Icon(Icons.add),
         ));
   }
