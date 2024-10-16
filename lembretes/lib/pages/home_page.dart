@@ -5,7 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:lembretes/main.dart';
 import 'package:lembretes/pages/login_page.dart';
 import 'package:timezone/timezone.dart' as tz;
-
+import 'package:permission_handler/permission_handler.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -227,6 +227,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> cancelarNotificacao(String lembreteId) async {
     await flutterLocalNotificationsPlugin.cancel(lembreteId.hashCode);
+  }
+
+  Future<void> solicitarPermissaoExata() async {
+    if (await Permission.scheduleExactAlarm.isDenied) {
+      await Permission.scheduleExactAlarm.request();
+    }
   }
 
   Future<void> agendarLembrete(
