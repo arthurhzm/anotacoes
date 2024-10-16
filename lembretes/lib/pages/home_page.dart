@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:lembretes/main.dart';
 import 'package:lembretes/pages/login_page.dart';
+import 'package:timezone/timezone.dart' as tz;
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -57,11 +60,17 @@ class _HomeScreenState extends State<HomeScreen> {
     };
 
     try {
-      await FirebaseFirestore.instance
+      final docRef = await FirebaseFirestore.instance
           .collection('lembretes')
           .doc(user.uid)
           .collection('meus_lembretes')
           .add(data);
+
+      // Agendar notificação
+      if (!isNeverSelected) {
+        await agendarLembrete(
+            docRef.id, _lembrete!, int.parse(_intervalo!), _unidadeTempo!);
+      }
 
       // Recarregar a lista de lembretes
       setState(() {
@@ -98,6 +107,9 @@ class _HomeScreenState extends State<HomeScreen> {
           .collection('meus_lembretes')
           .doc(documentId)
           .delete();
+
+      // Cancelar a notificação
+      await cancelarNotificacao(documentId);
 
       // Recarregar a lista de lembretes
       setState(() {
@@ -193,6 +205,49 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Duration calcularIntervalo(intervalo, unidade) {
+    switch (unidade) {
+      case 'minutos':
+        return Duration(minutes: intervalo);
+      case 'horas':
+        return Duration(hours: intervalo);
+      case 'semanas':
+        return Duration(days: intervalo * 7);
+      case 'meses':
+        return Duration(days: intervalo * 30);
+      case 'anos':
+        return Duration(days: intervalo * 365);
+      default:
+        return Duration.zero;
+    }
+  }
+
+  Future<void> cancelarNotificacao(String lembreteId) async {
+    await flutterLocalNotificationsPlugin.cancel(lembreteId.hashCode);
+  }
+
+  Future<void> agendarLembrete(
+      String lembreteId, String title, int intervalo, String unidade) async {
+    // Calcula o tempo do próximo lembrete com base no intervalo e unidade
+    final intervaloDuration = calcularIntervalo(intervalo, unidade);
+    final scheduleTime = DateTime.now().add(intervaloDuration);
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      lembreteId.hashCode, // Usar o ID do lembrete como identificador único
+      'Lembretes', // Título da notificação
+      title, // Corpo da notificação
+      tz.TZDateTime.from(scheduleTime, tz.local), // Horário agendado
+      const NotificationDetails(
+        android: AndroidNotificationDetails('lembrete_channel', 'Lembretes'),
+      ),
+      androidAllowWhileIdle:
+          true, // Permite mostrar enquanto o dispositivo estiver ocioso
+      matchDateTimeComponents: DateTimeComponents.time, // Agendamento periódico
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.wallClockTime,
     );
   }
 
