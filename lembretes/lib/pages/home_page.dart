@@ -69,9 +69,13 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       // Mostra uma mensagem de sucesso
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lembrete salvo com sucesso!')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lembrete salvo com sucesso!')),
+        );
+
+        Navigator.pop(context); // Fecha o dialog
+      }
     } catch (e) {
       if (context.mounted) {
         // Trata erros de salvamento
@@ -99,6 +103,15 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _lembretes = fetchLembretes(user.uid); // Atualiza a lista
       });
+
+      if (context.mounted) {
+        // Trata erros de exclusão
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lembrete excluído com sucesso!')),
+        );
+
+        Navigator.pop(context); // Fecha o dialog
+      }
     } catch (e) {
       if (context.mounted) {
         // Trata erros de exclusão
@@ -134,6 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     TextFormField(
                       decoration:
                           const InputDecoration(labelText: 'Lembrar a cada'),
+                      keyboardType: TextInputType.number,
                       validator: (value) {
                         if (value == null || value.isEmpty || value == '0') {
                           return 'Insira um intervalo de tempo válido';
@@ -188,9 +202,11 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Adicionar Lembrete'),
-          content: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _buildLembreteForm(isNeverSelected),
+          content: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: _buildLembreteForm(isNeverSelected),
+            ),
           ),
           actions: [
             TextButton(
@@ -254,7 +270,11 @@ class _HomeScreenState extends State<HomeScreen> {
         .collection('meus_lembretes')
         .get();
 
-    return querySnapshot.docs.map((doc) => doc.data()).toList();
+    return querySnapshot.docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id; // Adiciona o ID do documento aos dados
+      return data;
+    }).toList();
   }
 
   @override
