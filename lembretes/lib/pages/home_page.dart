@@ -208,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Duration calcularIntervalo(intervalo, unidade) {
+  Duration calcularIntervalo(int intervalo, String unidade) {
     switch (unidade) {
       case 'minutos':
         return Duration(minutes: intervalo);
@@ -217,9 +217,9 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'semanas':
         return Duration(days: intervalo * 7);
       case 'meses':
-        return Duration(days: intervalo * 30);
+        return Duration(days: intervalo * 30); // Aproximação
       case 'anos':
-        return Duration(days: intervalo * 365);
+        return Duration(days: intervalo * 365); // Aproximação
       default:
         return Duration.zero;
     }
@@ -237,21 +237,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> agendarLembrete(
       String lembreteId, String title, int intervalo, String unidade) async {
-    // Calcula o tempo do próximo lembrete com base no intervalo e unidade
+    // Verifica a permissão para alarmes exatos
+    if (await Permission.scheduleExactAlarm.isDenied) {
+      await solicitarPermissaoExata();
+    }
+
+    tz.setLocalLocation(tz.getLocation('America/Sao_Paulo'));
+
     final intervaloDuration = calcularIntervalo(intervalo, unidade);
     final scheduleTime = DateTime.now().add(intervaloDuration);
-
+    final tzDateTime = tz.TZDateTime.from(scheduleTime, tz.local);
+    
+    // Para a programação de notificação
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      lembreteId.hashCode, // Usar o ID do lembrete como identificador único
-      'Lembretes', // Título da notificação
-      title, // Corpo da notificação
-      tz.TZDateTime.from(scheduleTime, tz.local), // Horário agendado
+      lembreteId.hashCode,
+      'Lembretes',
+      title,
+      tz.TZDateTime.from(tzDateTime, tz.local), // Utilize scheduleTime
       const NotificationDetails(
         android: AndroidNotificationDetails('lembrete_channel', 'Lembretes'),
       ),
-      androidAllowWhileIdle:
-          true, // Permite mostrar enquanto o dispositivo estiver ocioso
-      matchDateTimeComponents: DateTimeComponents.time, // Agendamento periódico
+      matchDateTimeComponents: DateTimeComponents.time,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.wallClockTime,
     );
