@@ -25,6 +25,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    agendarLembreteTeste();
+
+    solicitarPermissaoNotificacoes();
     final User? user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _lembretes = fetchLembretes(user.uid); // Inicializa a variável aqui
@@ -235,6 +238,45 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> solicitarPermissaoNotificacoes() async {
+    if (await Permission.notification.isDenied) {
+      await Permission.notification.request();
+    }
+  }
+
+  Future<void> agendarLembreteTeste() async {
+    // Define um tempo muito próximo, 30 segundos no futuro
+    final tzDateTime =
+        tz.TZDateTime.now(tz.local).add(const Duration(seconds: 30));
+
+    // Configura os detalhes da notificação
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'lembrete_channel', // Certifique-se que o ID do canal é único
+      'Lembretes',
+      channelDescription: 'Canal para lembretes',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    // Agenda a notificação para 30 segundos no futuro
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      1, // ID único para a notificação
+      'Teste de Agendamento',
+      'Esta notificação foi agendada para 30 segundos no futuro!',
+      tzDateTime,
+      platformChannelSpecifics, // Detalhes do canal
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.wallClockTime,
+    );
+
+    print('Notificação de teste agendada para: $tzDateTime');
+  }
+
   Future<void> agendarLembrete(
       String lembreteId, String title, int intervalo, String unidade) async {
     // Verifica a permissão para alarmes exatos
@@ -247,20 +289,38 @@ class _HomeScreenState extends State<HomeScreen> {
     final intervaloDuration = calcularIntervalo(intervalo, unidade);
     final scheduleTime = DateTime.now().add(intervaloDuration);
     final tzDateTime = tz.TZDateTime.from(scheduleTime, tz.local);
-    
-    // Para a programação de notificação
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      lembreteId.hashCode,
-      'Lembretes',
-      title,
-      tz.TZDateTime.from(tzDateTime, tz.local), // Utilize scheduleTime
-      const NotificationDetails(
-        android: AndroidNotificationDetails('lembrete_channel', 'Lembretes'),
-      ),
-      matchDateTimeComponents: DateTimeComponents.time,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.wallClockTime,
+
+    // Configuração do canal de notificações (som, prioridade, importância)
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'lembrete_channel', // Este ID deve ser único para o canal
+      'Lembretes', // Nome do canal
+      channelDescription: 'Canal para lembretes agendados',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
     );
+
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    // Para a programação de notificação
+    try {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        lembreteId.hashCode,
+        'Lembretes',
+        title,
+        tzDateTime,
+        platformChannelSpecifics,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.wallClockTime,
+      );
+      print('Notificação agendada com sucesso!');
+      print('Notificação agendada para $tzDateTime');
+    } catch (e) {
+      print('Erro ao agendar notificação: $e');
+    }
   }
 
   void _addLembreteDialog(BuildContext context) {
