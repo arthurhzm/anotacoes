@@ -6,24 +6,52 @@ import 'package:lembretes/firebase_options.dart';
 import 'package:lembretes/pages/home_page.dart';
 import 'package:lembretes/pages/login_page.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:workmanager/workmanager.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  tz.initializeTimeZones();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  // Inicializar Notificações Locais
+void initializeNotifications() {
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  final InitializationSettings initializationSettings =
+  const InitializationSettings initializationSettings =
       InitializationSettings(android: initializationSettingsAndroid);
 
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  flutterLocalNotificationsPlugin.initialize(initializationSettings);
+}
 
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) {
+    showNotification(inputData!['lembreteTitle']);
+    return Future.value(true);
+  });
+}
+
+void showNotification(String lembreteTitle) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+    'lembrete_channel_id',
+    'lembretes',
+    importance: Importance.max,
+    priority: Priority.high,
+    showWhen: false,
+  );
+  const NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    'Hora do lembrete!',
+    lembreteTitle,
+    platformChannelSpecifics,
+  );
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimeZones();
+  Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MainApp());
 }
 

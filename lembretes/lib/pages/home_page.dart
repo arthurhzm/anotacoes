@@ -6,6 +6,7 @@ import 'package:lembretes/main.dart';
 import 'package:lembretes/pages/login_page.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:workmanager/workmanager.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,15 +18,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _lembrete;
-  String? _intervalo;
-  String? _unidadeTempo;
+  int _intervalo = 0;
+  String _unidadeTempo = "";
   bool isNeverSelected = false;
   late Future<List<Map<String, dynamic>>> _lembretes;
 
   @override
   void initState() {
     super.initState();
-    agendarLembreteTeste();
 
     solicitarPermissaoNotificacoes();
     final User? user = FirebaseAuth.instance.currentUser;
@@ -71,8 +71,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Agendar notificação
       if (!isNeverSelected) {
-        await agendarLembrete(
-            docRef.id, _lembrete!, int.parse(_intervalo!), _unidadeTempo!);
+        // Converter a unidade de tempo para Duration
+        Duration duration = calcularIntervalo(_intervalo, _unidadeTempo);
+
+        // Agendar notificação
+        Workmanager().registerPeriodicTask(
+          "lembrete-${docRef.id}",
+          "mostrar_notificacao",
+          frequency: duration,
+          inputData: <String, dynamic>{'lembreteTitle': _lembrete},
+        );
       }
 
       // Recarregar a lista de lembretes
@@ -164,32 +172,45 @@ class _HomeScreenState extends State<HomeScreen> {
                           const InputDecoration(labelText: 'Lembrar a cada'),
                       keyboardType: TextInputType.number,
                       validator: (value) {
-                        if (value == null || value.isEmpty || value == '0') {
+                        if (value == null ||
+                            value.isEmpty ||
+                            int.tryParse(value) == null ||
+                            int.parse(value) <= 0) {
                           return 'Insira um intervalo de tempo válido';
                         }
+
+                        final int intervalo = int.parse(value);
+                        if (_unidadeTempo == 'minutos' && intervalo < 15) {
+                          return 'O intervalo mínimo é de 15 minutos';
+                        }
+
                         return null;
                       },
                       onSaved: (newValue) {
-                        _intervalo = newValue;
+                        _intervalo = int.parse(newValue!);
                       },
                     ),
                   DropdownButtonFormField<String>(
                     decoration:
                         const InputDecoration(labelText: 'Unidade de Tempo'),
                     items: const [
-                      DropdownMenuItem(
+                      DropdownMenuItem<String>(
                           value: 'minutos', child: Text('Minutos')),
-                      DropdownMenuItem(value: 'horas', child: Text('Horas')),
-                      DropdownMenuItem(
+                      DropdownMenuItem<String>(
+                          value: 'horas', child: Text('Horas')),
+                      DropdownMenuItem<String>(
                           value: 'semanas', child: Text('Semanas')),
-                      DropdownMenuItem(value: 'meses', child: Text('Meses')),
-                      DropdownMenuItem(value: 'anos', child: Text('Anos')),
-                      DropdownMenuItem(
+                      DropdownMenuItem<String>(
+                          value: 'meses', child: Text('Meses')),
+                      DropdownMenuItem<String>(
+                          value: 'anos', child: Text('Anos')),
+                      DropdownMenuItem<String>(
                           value: 'nunca', child: Text('Nunca lembrar')),
                     ],
                     onChanged: (value) {
                       setState(() {
                         isNeverSelected = value == 'nunca';
+                        _unidadeTempo = value!;
                       });
                     },
                     validator: (value) {
@@ -199,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       return null;
                     },
                     onSaved: (newValue) {
-                      _unidadeTempo = newValue;
+                      _unidadeTempo = newValue!;
                     },
                   ),
                 ],
@@ -229,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> cancelarNotificacao(String lembreteId) async {
-    await flutterLocalNotificationsPlugin.cancel(lembreteId.hashCode);
+    await Workmanager().cancelByUniqueName("lembrete-$lembreteId");
   }
 
   Future<void> solicitarPermissaoExata() async {
@@ -242,39 +263,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (await Permission.notification.isDenied) {
       await Permission.notification.request();
     }
-  }
-
-  Future<void> agendarLembreteTeste() async {
-    // Define um tempo muito próximo, 30 segundos no futuro
-    final tzDateTime =
-        tz.TZDateTime.now(tz.local).add(const Duration(seconds: 30));
-
-    // Configura os detalhes da notificação
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'lembrete_channel', // Certifique-se que o ID do canal é único
-      'Lembretes',
-      channelDescription: 'Canal para lembretes',
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-    );
-
-    const NotificationDetails platformChannelSpecifics =
-        NotificationDetails(android: androidPlatformChannelSpecifics);
-
-    // Agenda a notificação para 30 segundos no futuro
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      1, // ID único para a notificação
-      'Teste de Agendamento',
-      'Esta notificação foi agendada para 30 segundos no futuro!',
-      tzDateTime,
-      platformChannelSpecifics, // Detalhes do canal
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.wallClockTime,
-    );
-
-    print('Notificação de teste agendada para: $tzDateTime');
   }
 
   Future<void> agendarLembrete(
